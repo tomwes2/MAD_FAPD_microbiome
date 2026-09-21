@@ -1,4 +1,4 @@
-# MAD fecal vs cecal (Paper 1) — analysis replication
+# Regional microbiome differences in adolescents with functional abdominal pain
 
 Reproduce the **paired stool vs cecal aspirate** shotgun-metagenomic analyses that support the figures, tables, and supplementary statistics in the integrated manuscript draft.
 
