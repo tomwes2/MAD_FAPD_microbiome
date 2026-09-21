@@ -1,0 +1,30 @@
+Paper 1 replication kit — paired fecal vs cecal
+
+INPUTS
+  subject_data.csv
+  sample_ids.csv
+  otu_table.csv
+  tax_table.csv
+  combined_pathabundance_relab.tsv
+
+CODE
+  run_replication.R
+  microbiome_pain_fecal_vs_cecal.Rmd
+  run_functional_pathway_analysis.R
+  annotate_direction_outputs.R
+  run_rf_importance_analysis.R
+  run_rf_subject_grouped_cv.R
+  run_pathway_network_analysis.R
+  build_paper1_figures.R
+  build_manuscript_package.R
+  R/*.R
+
+DOCS
+  README.md
+  MANIFEST.txt
+
+OUTPUTS (created on run; not shipped)
+  analysis_output/
+  functional_analysis_output/
+  manuscript_outputs/
+  reports/

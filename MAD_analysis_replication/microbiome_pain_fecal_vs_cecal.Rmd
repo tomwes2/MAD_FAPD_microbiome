@@ -1,0 +1,289 @@
+---
+title: "MAD Taxonomic Analysis — Pain: Fecal vs Cecal"
+author: "Wes Tom"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 9, fig.height = 6)
+data_dir <- Sys.getenv("MAD_DATA_DIR", unset = "")
+if (!nzchar(data_dir)) data_dir <- normalizePath(".")
+output_root <- Sys.getenv("MAD_OUTPUT_DIR", unset = "")
+if (!nzchar(output_root)) output_root <- data_dir
+data_dir <- normalizePath(data_dir)
+dir.create(output_root, recursive = TRUE, showWarnings = FALSE)
+output_root <- normalizePath(output_root)
+knitr::opts_knit$set(root.dir = data_dir)
+```
+
+# Overview
+
+SingleM relative-abundance profiles (`otu_table.csv`) linked to `tax_table.csv` and `subject_data.csv`.
+
+**Cohort:** pain subjects with paired fecal and cecal samples (`fvc_ps`, `pop == "pain"`).
+
+**Primary comparison:** GI site (fecal vs cecal). Taxa are relative abundances; MaAsLin2 uses `normalization = "NONE"`, `transform = "NONE"`.
+
+**Direction:** MaAsLin2 reference = `sample_type,Fecal`; paired Wilcoxon `median_diff` = cecal − fecal.
+
+Outputs: `analysis_output/` (MaAsLin2 in `maaslin2/`, consensus in `consensus/`, RF in `random_forest/`).
+
+---
+
+```{r packages}
+pkgs <- c(
+  "phyloseq", "microViz", "ampvis2", "dplyr", "tidyr", "tibble", "purrr",
+  "ggplot2", "ggpubr", "vegan", "Maaslin2", "randomForest", "ComplexHeatmap"
+)
+missing <- pkgs[!vapply(pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]
+if (length(missing)) stop("Install missing packages: ", paste(missing, collapse = ", "))
+library(phyloseq)
+library(microViz)
+library(ampvis2)
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(purrr)
+library(ggplot2)
+library(ggpubr)
+library(vegan)
+library(Maaslin2)
+library(randomForest)
+source(file.path(data_dir, "R", "microbiome_helpers.R"))
+```
+
+```{r paths}
+output_dir  <- file.path(output_root, "analysis_output")
+maaslin_dir <- file.path(output_dir, "maaslin2")
+rf_dir      <- file.path(output_dir, "random_forest")
+consensus_dir <- file.path(output_dir, "consensus")
+dir.create(maaslin_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(rf_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(consensus_dir, recursive = TRUE, showWarnings = FALSE)
+setwd(data_dir)
+```
+
+# 1. Load data
+
+```{r load-data}
+mad_objs <- load_mad_phyloseq(data_dir)
+mad_ps <- mad_objs$mad_ps
+fvc_ps <- mad_objs$fvc_ps
+meta_priority <- mad_objs$meta_priority
+fvc_ps
+```
+
+```{r cohort-summary}
+tibble(
+  cohort = "Pain fecal+cecal",
+  n_samples = nsamples(fvc_ps),
+  n_subjects = length(unique(sample_data(fvc_ps)$ssn)),
+  n_fecal = sum(sample_data(fvc_ps)$sample_type == "Fecal"),
+  n_cecal = sum(sample_data(fvc_ps)$sample_type == "Cecal")
+) %>% knitr::kable()
+```
+
+# 2. Alpha diversity
+
+```{r alpha-diversity}
+fvc_amp <- amp_load(fvc_ps)
+fvc_alpha <- amp_alphadiv(fvc_amp, measure = c("uniqueotus", "shannon"))
+
+p_u <- ggviolin(fvc_alpha, x = "sample_type", y = "uniqueOTUs",
+  fill = "sample_type", palette = c("gold", "darkred"), add = "boxplot") +
+  stat_compare_means(method = "wilcox.test") +
+  ggtitle("Richness — fecal vs cecal")
+p_s <- ggviolin(fvc_alpha, x = "sample_type", y = "Shannon",
+  fill = "sample_type", palette = c("gold", "darkred"), add = "boxplot") +
+  stat_compare_means(method = "wilcox.test") +
+  ggtitle("Shannon — fecal vs cecal")
+
+ggarrange(p_u, p_s, ncol = 2)
+ggsave(file.path(output_dir, "alpha_diversity_pain_gi.pdf"), width = 10, height = 5)
+```
+
+# 3. Beta diversity
+
+Aitchison distances on CLR-transformed species abundances (microViz).
+
+```{r permanova}
+perm_fvc <- run_permanova_microviz(
+  fvc_ps,
+  c("sample_type", "calprotectin_high", "phq_total", "gad_total"),
+  "Pain fecal vs cecal"
+)
+perm_fvc$table %>%
+  mutate(cohort = "pain_fvc") %>%
+  write.csv(file.path(output_dir, "permanova_pain_fecal_vs_cecal.csv"), row.names = FALSE)
+knitr::kable(perm_fvc$table, caption = "PERMANOVA — pain cohort")
+```
+
+```{r pca}
+fvc_ps %>%
+  tax_agg("species") %>%
+  tax_transform("clr") %>%
+  ord_calc() %>%
+  ord_plot(plot_taxa = 1:5, colour = "sample_type", size = 1.5) +
+  stat_ellipse(aes(colour = sample_type), linewidth = 0.3) +
+  ggtitle("Pain cohort — CLR PCA (fecal vs cecal)")
+ggsave(file.path(output_dir, "pca_pain_fecal_cecal.pdf"), width = 8, height = 6)
+```
+
+# 4. Composition heatmap
+
+```{r heatmap}
+htmp <- fvc_ps %>%
+  comp_heatmap(
+    taxa = tax_top(fvc_ps, n = 15),
+    grid_col = NA,
+    colors = heat_palette(palette = viridisLite::turbo(11)),
+    row_names_gp = grid::gpar(fontsize = 10),
+    sample_anno = sampleAnnotation(
+      GI_location = anno_sample_cat("sample_type", col = c(Fecal = "gold", Cecal = "darkred")),
+      Calprotectin = anno_sample_cat("calprotectin_high", col = c(`1` = "salmon", `0` = "forestgreen"))
+    )
+  )
+png(file.path(output_dir, "heatmap_pain_top15.png"), width = 14, height = 10, units = "in", res = 300)
+ComplexHeatmap::draw(htmp, merge_legends = TRUE)
+dev.off()
+```
+
+# 5. Differential abundance
+
+| Method | Role |
+|--------|------|
+| MaAsLin2 (unpaired) | Multivariable LM + covariates |
+| MaAsLin2 paired (`ssn` random effect) | Within-subject GI site |
+| Paired Wilcoxon | Within-subject screen |
+| LEfSe-style | Kruskal–Wallis + BH |
+| Random forest | Supporting importance |
+
+Consensus: **≥2 methods** at *q* < 0.25 for `sample_type`.
+
+## 5a. MaAsLin2
+
+```{r maaslin-fvc}
+maaslin_fvc <- run_maaslin(
+  ps = fvc_ps,
+  fixed_effects = c(
+    "sample_type", "calprotectin", "calprotectin_high",
+    "age", "sex", "bmi", "obese",
+    "phq_total", "phq_difficulty", "gad_total", "gad_difficulty", "household_shared"
+  ),
+  output_subdir = "pain_fecal_vs_cecal",
+  maaslin_dir = maaslin_dir,
+  reference = "sample_type,Fecal",
+  random_effects = "household_id"
+)
+plot_maaslin_volcano(
+  maaslin_fvc, "MaAsLin2 — Pain (fecal vs cecal)",
+  file.path(output_dir, "maaslin_volcano_pain_fvc.pdf"),
+  meta_priority
+)
+```
+
+```{r maaslin-fvc-paired}
+out_paired <- file.path(maaslin_dir, "pain_fecal_vs_cecal_paired_ssn")
+dir.create(out_paired, recursive = TRUE, showWarnings = FALSE)
+dat <- as.data.frame(otu_table(fvc_ps))
+if (ncol(dat) == nsamples(fvc_ps)) dat <- t(dat)
+meta_p <- prepare_maaslin_metadata(
+  fvc_ps,
+  fixed_effects = c("sample_type", "calprotectin", "calprotectin_high",
+                    "age", "sex", "bmi", "obese", "phq_total", "gad_total")
+)
+meta_p <- meta_p[rownames(dat), , drop = FALSE]
+maaslin_fvc_paired <- Maaslin2(
+  input_data = dat,
+  input_metadata = meta_p,
+  output = out_paired,
+  min_abundance = 0, min_prevalence = 0.1, max_significance = 0.25,
+  normalization = "NONE", transform = "NONE",
+  analysis_method = "LM",
+  fixed_effects = c("sample_type"),
+  random_effects = c("ssn"),
+  reference = "sample_type,Fecal",
+  plot_scatter = FALSE
+)
+```
+
+## 5b. Paired Wilcoxon and LEfSe-style
+
+```{r diffabund-pain}
+paired_fvc <- paired_wilcox_screen(fvc_ps, "sample_type", p_thresh = 0.25)
+lefse_fvc  <- lefse_screen(fvc_ps, "sample_type", p_thresh = 0.25)
+write.csv(paired_fvc, file.path(output_dir, "paired_wilcox_pain_gi.csv"), row.names = FALSE)
+write.csv(lefse_fvc,  file.path(output_dir, "lefse_style_pain_gi.csv"), row.names = FALSE)
+```
+
+# 6. Random forest
+
+```{r random-forest}
+rf_fvc <- run_rf_classifier(fvc_ps, "sample_type", "pain_fecal_vs_cecal")
+if (!is.null(rf_fvc)) {
+  plot_rf_importance(rf_fvc, out_file = file.path(rf_dir, "rf_importance_pain_gi_site.pdf"))
+  write.csv(rf_fvc$importance, file.path(rf_dir, "rf_importance_pain_gi_site.csv"), row.names = FALSE)
+}
+```
+
+# 7. Consensus
+
+```{r consensus}
+q_thresh <- 0.25
+pain_hits <- list(
+  maaslin2 = read_maaslin_hits(maaslin_dir, "pain_fecal_vs_cecal", "sample_type", q_thresh) %>%
+    distinct(feature, .keep_all = TRUE),
+  maaslin2_paired = read_maaslin_hits(maaslin_dir, "pain_fecal_vs_cecal_paired_ssn", "sample_type", q_thresh) %>%
+    distinct(feature, .keep_all = TRUE),
+  paired_wilcox = paired_fvc %>% distinct(feature, .keep_all = TRUE),
+  lefse_style = lefse_fvc %>% distinct(feature, .keep_all = TRUE)
+)
+pain_hits <- pain_hits[vapply(pain_hits, nrow, integer(1)) > 0]
+
+consensus_pain <- build_consensus(
+  cohort_label = "pain_fecal_vs_cecal",
+  comparison = "sample_type",
+  method_hits = pain_hits,
+  rf_imp = if (!is.null(rf_fvc)) rf_fvc$importance else NULL,
+  min_methods = 2
+)
+write.csv(consensus_pain, file.path(consensus_dir, "consensus_pain_gi_site.csv"), row.names = FALSE)
+write.csv(
+  consensus_pain %>% filter(n_methods >= 3),
+  file.path(consensus_dir, "consensus_pain_gi_site_strong.csv"),
+  row.names = FALSE
+)
+write.csv(method_overlap(pain_hits), file.path(consensus_dir, "method_overlap_pain.csv"), row.names = FALSE)
+
+if (nrow(consensus_pain) > 0) {
+  ggplot(consensus_pain %>% slice_head(n = 20),
+         aes(x = reorder(feature, n_methods), y = n_methods, fill = rf_top_support)) +
+    geom_col() + coord_flip() +
+    labs(title = "Consensus taxa — pain fecal vs cecal",
+         subtitle = ">=2 methods (MaAsLin2, paired Wilcoxon, LEfSe-style)",
+         x = NULL, y = "# methods") +
+    theme_bw()
+  ggsave(file.path(consensus_dir, "consensus_pain_top20.pdf"), width = 9, height = 7)
+  knitr::kable(consensus_pain %>% slice_head(n = 25))
+}
+```
+
+**Output files**
+
+- `consensus/consensus_pain_gi_site.csv` — ≥2 methods
+- `consensus/consensus_pain_gi_site_strong.csv` — ≥3 methods
+- `consensus/method_overlap_pain.csv` — per-taxon method counts
+
+Optional: run `query_microbe_literature.py` on the strong consensus list for PubMed summaries.
+
+# 8. Session info
+
+```{r session}
+sessionInfo()
+```

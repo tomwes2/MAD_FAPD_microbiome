@@ -1,0 +1,8 @@
+analysis_output/
+functional_analysis_output/
+manuscript_outputs/
+private/
+*.html
+.Rhistory
+.RData
+.~lock.*

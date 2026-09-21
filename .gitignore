@@ -1,0 +1,21 @@
+.venv*/
+venv/
+__pycache__/
+.Rhistory
+.RData
+.Rproj.user/
+.~lock.*
+.DS_Store
+*.log
+*~
+
+# Regenerable outputs
+analysis_output/
+functional_analysis_output/
+manuscript_outputs/
+reports/
+
+# Not part of this Paper 1 analysis package
+manuscript_draft/
+MAD_analysis_replication/private/
+MAD_analysis_replication.tar.gz

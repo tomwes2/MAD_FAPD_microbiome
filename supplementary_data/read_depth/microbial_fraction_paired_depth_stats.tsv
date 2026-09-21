@@ -1,0 +1,4 @@
+group	n	mean_bases	median_bases	std_bases	min_bases	max_bases	mean_Gb	median_Gb	mean_read_pairs_PE150	median_read_pairs_PE150	mean_reads_R1R2_PE150	median_reads_R1R2_PE150	mean_delta_Gb_fecal_minus_cecal	median_delta_Gb_fecal_minus_cecal	paired_cohens_d	shapiro_wilk_diff_p	paired_t_pvalue	wilcoxon_pvalue	test_used
+all_paired_libraries	50	1.5547e+10	1.56612e+10	5.0302e+09	1.1581e+09	3.4256e+10	15.547	15.6612	5.18234e+07	5.2204e+07	1.03647e+08	1.04408e+08	-0.25278416604	-0.3491802	-0.03706011734545812	0.030707396681940266	0.8545503670841155	0.936802864074707	wilcoxon_signed_rank
+fecal	25	1.54206e+10	1.56594e+10	3.71043e+09	8.10446e+09	2.24274e+10	15.4206	15.6594	5.14021e+07	5.21979e+07	1.02804e+08	1.04396e+08							
+cecal	25	1.56734e+10	1.5663e+10	6.15301e+09	1.1581e+09	3.4256e+10	15.6734	15.663	5.22447e+07	5.221e+07	1.04489e+08	1.0442e+08							
