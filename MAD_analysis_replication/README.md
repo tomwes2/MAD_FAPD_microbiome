@@ -22,15 +22,12 @@ Inputs and R scripts for the **paired fecal vs cecal** analysis (adolescents wit
 | `run_rf_importance_analysis.R` | Random forest importance |
 | `run_rf_subject_grouped_cv.R` | Leave-one-subject-out CV + permutation |
 | `run_pathway_network_analysis.R` | Pathway network + Louvain modules |
-| `build_paper1_figures.R` | Paper 1 figure/table copies |
-| `build_manuscript_package.R` | Results text + extended tables |
 | `R/` | Shared helpers (`paths.R`, phyloseq loaders, network, RF) |
 
 ## Outputs (written under `MAD_OUTPUT_DIR`)
 
 - `analysis_output/`
 - `functional_analysis_output/` (includes `pathway_network/`)
-- `manuscript_outputs/paper1_fecal_vs_cecal/`
 - `reports/` (knitted HTML)
 
 ## R packages

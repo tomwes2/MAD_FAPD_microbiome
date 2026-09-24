@@ -17,5 +17,8 @@ reports/
 
 # Not part of this Paper 1 analysis package
 manuscript_draft/
+*.docx
 MAD_analysis_replication/private/
 MAD_analysis_replication.tar.gz
+MAD_analysis_replication/build_manuscript_package.R
+MAD_analysis_replication/build_paper1_figures.R

@@ -15,8 +15,6 @@ CODE
   run_rf_importance_analysis.R
   run_rf_subject_grouped_cv.R
   run_pathway_network_analysis.R
-  build_paper1_figures.R
-  build_manuscript_package.R
   R/*.R
 
 DOCS
@@ -26,5 +24,4 @@ DOCS
 OUTPUTS (created on run; not shipped)
   analysis_output/
   functional_analysis_output/
-  manuscript_outputs/
   reports/

@@ -44,18 +44,15 @@ if (length(perm_parts) && requireNamespace("dplyr", quietly = TRUE)) {
   write.csv(combined, file.path(analysis_dir, "permanova_results.csv"), row.names = FALSE)
 }
 
-# 2) Pathways, RF, network, Paper 1 figure/table package
+# 2) Pathways, RF, network
 run_cmd("run_functional_pathway_analysis.R")
 run_cmd("annotate_direction_outputs.R")
 run_cmd("run_rf_importance_analysis.R")
 run_cmd("run_rf_subject_grouped_cv.R")
 run_cmd("run_pathway_network_analysis.R")
-run_cmd("build_paper1_figures.R")
-run_cmd("build_manuscript_package.R")
 
 message("\nDone.")
 message("Taxonomy:     ", file.path(output_root, "analysis_output/"))
 message("Pathways:     ", file.path(output_root, "functional_analysis_output/"))
-message("Paper 1 figs: ", file.path(output_root, "manuscript_outputs/paper1_fecal_vs_cecal/figures/"))
-message("Paper 1 tabs: ", file.path(output_root, "manuscript_outputs/paper1_fecal_vs_cecal/tables/"))
 message("Network:      ", file.path(output_root, "functional_analysis_output/pathway_network/"))
+message("RF outputs:   ", file.path(output_root, "analysis_output/random_forest/"))

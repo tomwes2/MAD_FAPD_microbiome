@@ -1,4 +1,4 @@
-# Shared helpers for MAD manuscript package (tables, plots, HUMAnN loading).
+# Shared helpers for pathway loading, metadata prep, and simple plots.
 # For differential *direction* (cecum vs fecal), see R/direction_helpers.R.
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
