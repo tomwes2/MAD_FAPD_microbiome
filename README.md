@@ -25,13 +25,15 @@ This is a **within-subject site comparison** (cecum vs stool), not pain vs healt
 .
 ├── README.md
 ├── run_local_replication.sh          # entrypoint
+├── scripts/
+│   └── run_bbduk_pe.sh               # paired-end bbduk trim (QC used for this study)
 ├── MAD_analysis_replication/         # inputs + R pipeline
 │   ├── subject_data.csv              # sample metadata
 │   ├── sample_ids.csv
 │   ├── otu_table.csv / tax_table.csv
 │   ├── combined_pathabundance_relab.tsv
 │   ├── microbiome_pain_fecal_vs_cecal.Rmd
-│   ├── run_*.R / build_*.R
+│   ├── run_*.R
 │   └── R/                            # helpers
 └── supplementary_data/read_depth/    # library-depth tables (Suppl. depth stats)
 ```
@@ -95,3 +97,4 @@ Manuscript figure assembly and Results packaging are kept outside this repositor
 - Paired fecal and cecal sequencing depths do not differ meaningfully (see `supplementary_data/read_depth/`).  
 - Louvain partitioning can vary slightly across runs; manuscript figures used the locked C1–C9 labeling from the primary analysis.  
 - Column `ssn` in `subject_data.csv` is the study subject code (e.g. `MAD001`), used as the paired-subject ID.
+- Upstream QC for this study was `bbduk` trimming only (`scripts/run_bbduk_pe.sh`). Assembly/mapping pipelines were not used for the site comparison.
